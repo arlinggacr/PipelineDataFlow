@@ -1,0 +1,6 @@
+@PipelineDataFlow_HostAddress = http://localhost:5267
+
+GET {{PipelineDataFlow_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
