@@ -33,67 +33,93 @@ namespace PipelineDataFlow.Services
             {
                 if (string.IsNullOrEmpty(sourceTableName) || string.IsNullOrEmpty(targetTableName))
                 {
-                    throw new ArgumentException("Invalid table name");
+                    return ResponseHandler.ToResponse(400, false, null, ["Invalid table name"]);
                 }
 
                 var query = $"SELECT * FROM {sourceTableName}";
                 DataTable dataTable = new DataTable();
-                using (var connection = (NpgsqlConnection)_context1.Database.GetDbConnection())
+
+                // Read data from source table in _context1
+                using (var connection1 = (NpgsqlConnection)_context1.Database.GetDbConnection())
                 {
-                    await connection.OpenAsync();
-                    var command = new NpgsqlCommand(query, connection);
-                    var reader = await command.ExecuteReaderAsync();
-                    dataTable.Load(reader);
+                    await connection1.OpenAsync();
+                    try
+                    {
+                        var command = new NpgsqlCommand(query, connection1);
+                        var reader = await command.ExecuteReaderAsync();
+                        dataTable.Load(reader);
+                    }
+                    finally
+                    {
+                        await connection1.CloseAsync();
+                    }
                 }
 
+                // Generate the CREATE TABLE statement
                 var columnDefinitions = dataTable
                     .Columns
                     .Cast<DataColumn>()
                     .Select(c => $"{c.ColumnName} {GetPostgresType(c.DataType)}")
                     .ToArray();
+
                 var createTableQuery =
-                    $"CREATE TABLE {targetTableName} ({string.Join(", ", columnDefinitions)})";
+                    $"CREATE TABLE IF NOT EXISTS {targetTableName} ({string.Join(", ", columnDefinitions)})";
 
-                using (var connection = (NpgsqlConnection)_context2.Database.GetDbConnection())
+                // Create the target table and insert data into it in _context2
+                using (var connection2 = (NpgsqlConnection)_context2.Database.GetDbConnection())
                 {
-                    await connection.OpenAsync();
-                    using (var command = new NpgsqlCommand(createTableQuery, connection))
+                    await connection2.OpenAsync();
+                    try
                     {
-                        await command.ExecuteNonQueryAsync();
-                    }
-
-                    // Insert data into the target table
-                    foreach (DataRow row in dataTable.Rows)
-                    {
-                        var columnNames = string.Join(
-                            ", ",
-                            dataTable.Columns.Cast<DataColumn>().Select(c => c.ColumnName)
-                        );
-                        var parameterNames = string.Join(
-                            ", ",
-                            dataTable.Columns.Cast<DataColumn>().Select(c => "@" + c.ColumnName)
-                        );
-
-                        var insertQuery =
-                            $"INSERT INTO {targetTableName} ({columnNames}) VALUES ({parameterNames})";
-                        using (var command = new NpgsqlCommand(insertQuery, connection))
+                        // Execute the CREATE TABLE query
+                        using (var command = new NpgsqlCommand(createTableQuery, connection2))
                         {
-                            foreach (DataColumn column in dataTable.Columns)
-                            {
-                                command
-                                    .Parameters
-                                    .AddWithValue("@" + column.ColumnName, row[column.ColumnName]);
-                            }
                             await command.ExecuteNonQueryAsync();
                         }
+
+                        // Insert data into the target table
+                        foreach (DataRow row in dataTable.Rows)
+                        {
+                            var columnNames = string.Join(
+                                ", ",
+                                dataTable.Columns.Cast<DataColumn>().Select(c => c.ColumnName)
+                            );
+                            var parameterNames = string.Join(
+                                ", ",
+                                dataTable.Columns.Cast<DataColumn>().Select(c => "@" + c.ColumnName)
+                            );
+
+                            var insertQuery =
+                                $"INSERT INTO {targetTableName} ({columnNames}) VALUES ({parameterNames})";
+                            using (var command = new NpgsqlCommand(insertQuery, connection2))
+                            {
+                                foreach (DataColumn column in dataTable.Columns)
+                                {
+                                    command
+                                        .Parameters
+                                        .AddWithValue(column.ColumnName, row[column.ColumnName]);
+                                }
+                                await command.ExecuteNonQueryAsync();
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        await connection2.CloseAsync();
                     }
                 }
-                return dataTable;
+
+                return ResponseHandler.ToResponse(
+                    200,
+                    true,
+                    $"Data transferred successfully from {sourceTableName} to {targetTableName}.",
+                    []
+                );
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                Console.WriteLine($"Error Service: {ex}");
-                throw;
+                Console.WriteLine($"Error in Service: {ex.Message}");
+                return ResponseHandler.ToResponse(500, false, null, [ex.Message]);
             }
         }
 
