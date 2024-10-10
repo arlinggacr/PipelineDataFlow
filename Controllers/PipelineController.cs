@@ -13,7 +13,7 @@ namespace PipelineDataFlow.Controllers
     {
         private readonly PipelineService _service;
 
-        public PipelineController( PipelineService service)
+        public PipelineController(PipelineService service)
         {
             _service = service;
         }
@@ -21,20 +21,43 @@ namespace PipelineDataFlow.Controllers
         [HttpPost("transfer-test")]
         public async Task<IActionResult> TransferDataAsync([FromBody] RequestBody req)
         {
-            if (
-                req == null
-                || string.IsNullOrEmpty(req.SourceTableName)
-                || string.IsNullOrEmpty(req.TargetTableName)
-            )
+            try
             {
-                return BadRequest("Invalid request payload");
+                if (
+                    req == null
+                    || string.IsNullOrEmpty(req.SourceTableName)
+                    || string.IsNullOrEmpty(req.TargetTableName)
+                )
+                {
+                    return BadRequest(
+                        ResponseHandler.ToResponse(
+                            400,
+                            false,
+                            null,
+                            new List<string> { "Invalid request payload" }
+                        )
+                    );
+                }
+
+                var response = await _service.TransferDataAsync(
+                    req.SourceTableName,
+                    req.TargetTableName
+                );
+
+                return Ok(response);
             }
-z
-            var response = await _service.TransferDataAsync(
-                req.SourceTableName,
-                req.TargetTableName
-            );
-            return Ok(response);
+            catch (Exception ex)
+            {
+                return StatusCode(
+                    500,
+                    ResponseHandler.ToResponse(
+                        500,
+                        false,
+                        null,
+                        new List<string> { "An error occurred", ex.Message }
+                    )
+                );
+            }
         }
     }
 }
