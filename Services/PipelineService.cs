@@ -116,7 +116,7 @@ namespace PipelineDataFlow.Services
                     []
                 );
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"Error in Service: {ex.Message}");
                 return ResponseHandler.ToResponse(500, false, null, [ex.Message]);

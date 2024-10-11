@@ -30,12 +30,7 @@ namespace PipelineDataFlow.Controllers
                 )
                 {
                     return BadRequest(
-                        ResponseHandler.ToResponse(
-                            400,
-                            false,
-                            null,
-                            new List<string> { "Invalid request payload" }
-                        )
+                        ResponseHandler.ToResponse(400, false, null, ["Invalid request payload"])
                     );
                 }
 
@@ -50,12 +45,7 @@ namespace PipelineDataFlow.Controllers
             {
                 return StatusCode(
                     500,
-                    ResponseHandler.ToResponse(
-                        500,
-                        false,
-                        null,
-                        new List<string> { "An error occurred", ex.Message }
-                    )
+                    ResponseHandler.ToResponse(500, false, null, ["An error occurred", ex.Message])
                 );
             }
         }
