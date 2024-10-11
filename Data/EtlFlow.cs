@@ -8,24 +8,24 @@ namespace PipelineDataFlow.Dataflow
     public class PipelineDataflow
     {
         // Declare blocks
-        private readonly ISourceBlock<TargetPipeline> _sourceBlock;
-        private readonly IPropagatorBlock<TargetPipeline, TargetPipeline> _transformBlock;
-        private readonly ITargetBlock<TargetPipeline> _targetBlock;
+        private readonly ISourceBlock<PipelineTarget> _sourceBlock;
+        private readonly IPropagatorBlock<PipelineTarget, PipelineTarget> _transformBlock;
+        private readonly ITargetBlock<PipelineTarget> _targetBlock;
 
         public PipelineDataflow()
         {
             // Source Block: Produces PipelineData
-            _sourceBlock = new BufferBlock<TargetPipeline>();
+            _sourceBlock = new BufferBlock<PipelineTarget>();
 
             // Transform Block: Example transformation
-            _transformBlock = new TransformBlock<TargetPipeline, TargetPipeline>(data => // Entity must be source and output
+            _transformBlock = new TransformBlock<PipelineTarget, PipelineTarget>(data => // Entity must be source and output
             {
                 data.Transformed = true; // If already transformed
                 return data;
             });
 
             // Target Block: Consumes the transformed data
-            _targetBlock = new ActionBlock<TargetPipeline>(data =>
+            _targetBlock = new ActionBlock<PipelineTarget>(data =>
             {
                 Console.WriteLine($"Processed Data: {data.Id}, Transformed: {data.Transformed}");
                 // Logic for saving data into database supposed to be below
